@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Script Launcher</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f4f4f9; }
+        h1 { color: #333333; border-bottom: 2px solid #333333; }
+        .script-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        
+        /* 追加したスタイル */
+        .script-info { flex-grow: 1; margin-right: 20px; }
+        .script-name { font-weight: bold; font-size: 1.1em; color: #005555; }
+        .script-desc { font-size: 0.9em; color: #555555; margin: 5px 0 0 0; }
+        
+        button { background-color: #00aaff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; white-space: nowrap; }
+        button:hover { background-color: #00aaff; }
+        button:disabled { background-color: #cccccc; }
+        #output-container { margin-top: 20px; background: #333333; color: #aabbcc; padding: 20px; border-radius: 8px; display: none; overflow-x: auto; }
+        pre { white-space: pre-wrap; word-wrap: break-word; margin: 0; }
+        .status { font-weight: bold; margin-bottom: 10px; }
+    </style>
+</head>
+
+<body>
+    <h1>実行したいスクリプトを選択</h1>
+    <div id="script-list">
+        {% for script in scripts %}
+        <div class="script-card">
+            <div class="script-info">
+                <div class="script-name">{{ script.display_name }}</div> 
+                <p class="script-desc">{{ script.desc }}</p>
+            </div>
+            <button onclick="runScript('{{ script.name }}', this)">実行</button>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div id="output-container">
+        <div class="status" id="status"></div>
+        <pre id="output"></pre>
+    </div>
+
+    <script>
+        async function runScript(name, btn) {
+            const outputContainer = document.getElementById('output-container');
+            const outputElement = document.getElementById('output');
+            const statusElement = document.getElementById('status');
+            
+            btn.disabled = true;
+            statusElement.innerText = "実行中...";
+            outputElement.innerText = "";
+            outputContainer.style.display = "block";
+
+            const formData = new FormData();
+            formData.append('script_name', name);
+
+            try {
+                const response = await fetch('/run', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.exit_code === 0) {
+                    statusElement.innerText = "完了";
+                    statusElement.style.color = "#88cc88";
+                } else {
+                    statusElement.innerText = "エラー";
+                    statusElement.style.color = "#ff8888";
+                }
+                
+                outputElement.innerText = data.stdout + "\n" + data.stderr;
+            } catch (error) {
+                statusElement.innerText = "通信エラー。起動後もCMDを閉じないでください。";
+                statusElement.style.color = "#ff0000";
+                outputElement.innerText = error;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
